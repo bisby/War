@@ -2,6 +2,7 @@
 public class Card {
 	private int value;
 	private String suit;
+	private Player owner;
 
 	public Card(int value, String suit) {
 		this.value = value;
@@ -10,6 +11,14 @@ public class Card {
 
 	public int getValue() {
 		return this.value;
+	}
+
+	public Player getOwner() {
+		return owner;
+	}
+
+	public void setOwner(Player p) {
+		this.owner = p;
 	}
 
 	public String getSuit() {

@@ -1,106 +1,124 @@
 import java.util.*;
 public class War {
 	private Deck dealerPile = new Deck(true);
-	private Player player1 = new Player("Player 1");
-	private Player player2 = new Player("Player 2");
-	
+	private ArrayList<Player> players = new ArrayList<Player>();
+	private ArrayList<Card> pot = new ArrayList<Card>();
 	private int battleCount = 0;
 	
 	public void play() {
+		playerJoins(new Player("Player 1"));
+		playerJoins(new Player("Player 2"));
 		deal();
-		while (player1.cardsLeft() != 0 && player2.cardsLeft() != 0) {
-			battle(player1, player2);
-			System.out.println("1: " + player1.cardsLeft() + " - 2: " + player2.cardsLeft());
+
+		while (!winConditions()) {
+			battle();
+			cardCount();
 		}
-		
-		if (player1.cardsLeft() > player2.cardsLeft()) {
-			System.out.println(player2.getName() + " wins the war");
-		} else if (player2.cardsLeft() > player1.cardsLeft()) {
-			System.out.println(player2.getName() + " wins the war");
-		} else {
-			System.out.println("The game is a draw");
-		}
+		System.out.println(players.get(0).getName() + " loses");
+		//	TODO - Filter "players" down to a single victor
+		//		and System.out.println(victor.getName() + " wins");
 	}
 	
+	public void playerJoins(Player person) {
+		players.add(person);
+	}
+
 	public void deal() {
-		while (dealerPile.cardsLeft() > 0) {
-			player1.pickup(dealerPile.dealCard());
-			player2.pickup(dealerPile.dealCard());
-		}		
+		while (dealerPile.cardsLeft() > players.size()) {
+			for (Player p : players) {
+				p.pickup(dealerPile.dealCard());
+			}
+		}
 	}
-	
-	public int battle (Player player1, Player player2) {
+
+	public boolean winConditions() {
+		ArrayList<Player> remaining = new ArrayList<Player>();
+		for (Player p : players) {
+			if (p.cardsLeft() > 0) { remaining.add(p); }
+		}
+		return (remaining.size() <= 1);
+	}
+
+	public void battle() {
 		battleCount += 1;
-		player1.drawCard();
-		player2.drawCard();
+		pot.clear();
+		ArrayList<Card> bestCards = new ArrayList<Card>();
+		Player winner;
+
+
+		for (int i = 0; i < players.size(); i++) {
+			pot.add(players.get(i).drawCard());
+		}
+
 		System.out.println("BATTLE " + battleCount + "!");
-		System.out.println("1: " + player1.battleCard().toString() + " vs 2: " + player2.battleCard().toString());
-		if (player1.battleCard().getValue() > player2.battleCard().getValue()) {
-			player1.win(player2.lose());
-			return 1;
-		} else if (player2.battleCard().getValue() > player1.battleCard().getValue()) {
-			player2.win(player1.lose());
-			return 2;
+		bestCards = compareCards(pot);
+
+		if (bestCards.size() == 1) {
+			winner = bestCards.get(0).getOwner();
+			System.out.println(winner.getName() + " wins with " + bestCards.get(0));
 		} else {
-			if (player1.drawWarCards() == null) {
-				player2.win(player1.lose());
-				return -1;
+			ArrayList<Player> battlers = new ArrayList<Player>();
+			for (Card c : bestCards) {
+				battlers.add(c.getOwner());
 			}
-			if (player2.drawWarCards() == null) {
-				player1.win(player2.lose());
-				return -1;
-			}
-			return war(player1.warCards(), player2.warCards());
-		}	
-	}
-	
-	public int war (ArrayList<Card> deck1, ArrayList<Card> deck2) {
-		int[] values1 = new int[3];
-		int[] values2 = new int[3];
-		System.out.print("1: ");
-		int x = 0;
-		for (Card c : deck1) {
-			System.out.print(c.toString() + " ");
-			values1[x] = c.getValue();
-			x++;
+			winner = war(battlers);
 		}
-		System.out.print("vs 2: ");
-		x = 0;
-		for (Card c : deck2) {
-			System.out.print(c.toString() + " ");
-			values2[x] = c.getValue();
-			x++;
-		}
-		Arrays.sort(values1);
-		Arrays.sort(values2);
+		winner.pickup(pot);
 		System.out.println();
-		if (values1[2] > values2[2]) {
-			player1.win(player2.lose());
-			return 1;
-		} else if (values2[2] > values1[2]) {
-			player2.win(player1.lose());
-			return 2;
-		} else {
-			if (values1[1] > values2[1]) {
-				player1.win(player2.lose());
-				return 1;
-			} else if (values2[1] > values1[1]) {
-				player2.win(player1.lose());
-				return 2;
-			} else {
-				if (values1[0] > values2[0]) {
-					player1.win(player2.lose());
-					return 1;
-				} else if (values2[0] > values1[0]) {
-					player2.win(player1.lose());
-					return 2;
-				} else {
-					player1.tie();
-					player2.tie();
-					System.out.println("The war was a stalemate");
-					return 0;
+		return;
+	}
+
+	public ArrayList<Card> compareCards(ArrayList<Card> cards) {
+		ArrayList<Card> bestCards = new ArrayList<Card>();
+		for (Card c : cards) {
+			if (bestCards.size() == 0 || bestCards.get(0) == null) {
+				bestCards.add(c);
+			} else if (c == null) {
+
+			} else if (c.getValue() > bestCards.get(0).getValue()) {
+				bestCards.clear();
+				bestCards.add(c);
+			} else if (c.getValue() == bestCards.get(0).getValue()) {
+				bestCards.add(c);
+			}
+		}
+		return bestCards;
+	}
+
+	public void cardCount() {
+		for (Player p : players) {
+			System.out.print(p.getName() + ": " + p.cardsLeft() + " ");
+		}
+		System.out.println();
+	}
+
+	public Player war (ArrayList<Player> battlers) {
+		ArrayList<Card> pool = new ArrayList<Card>();
+		ArrayList<Card> bestCards = new ArrayList<Card>();
+		System.out.println("WAR!");
+
+		for (Player p : battlers) {
+			p.cacheCards(3);
+			pot.addAll(p.getCache());
+		}
+
+		for (int i = 0; i < 3; i++) {
+			pool.clear();
+			for (Player p : battlers) { 
+				if (p.getCache().get(i) != null) {
+					System.out.println(p.getName()  + " " + p.getCache().get(i));
+					pool.add(p.getCache().get(i));
 				}
 			}
-		}	
+			bestCards = compareCards(pool);
+			System.out.println(bestCards.size());
+			if (bestCards.size() == 1) {
+				return bestCards.get(0).getOwner();
+			} else if (bestCards.size() == 0) {
+				return battlers.get(0);
+			}
+		}
+
+		return war(battlers);
 	}
 }
